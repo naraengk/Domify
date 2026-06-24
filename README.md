@@ -12,7 +12,7 @@ https://domifyapp.onrender.com
 
 Hosted on Render's free tier, so the backend sleeps after 15 minutes of
 no traffic. First request after a quiet period takes ~30 seconds to wake
-the server; everything is snappy after that.
+the server.
 
 ## Run it locally
 
@@ -77,9 +77,9 @@ tests/
 
 ## Notes
 
-- Tables are created with `Base.metadata.create_all` on startup. No alembic.
+- Tables are created with `Base.metadata.create_all` on startup.
 - JWT in localStorage. Token expires in 60 minutes.
 - For Postgres: `DATABASE_URL=postgresql+psycopg2://user:pass@host/db`.
 - Icons: lucide-react. Charts: recharts. No other UI libraries.
 - Deployed split across Render (frontend static site + backend web service)
-  and Neon (Postgres). Both free tiers, no card required.
+  and Neon (Postgres). Both free tiers
