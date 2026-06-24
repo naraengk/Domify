@@ -24,12 +24,16 @@ export function clearAuth() {
   localStorage.removeItem("domify_active_house");
 }
 
+// in dev/local both services run together so this stays empty.
+// in prod, set VITE_API_BASE on vercel to the backend's full url.
+const BASE = import.meta.env.VITE_API_BASE || "";
+
 // one helper for every request. handles the auth header and json parsing.
 async function req(method, path, body) {
   const headers = { "Content-Type": "application/json" };
   const tok = getToken();
   if (tok) headers.Authorization = `Bearer ${tok}`;
-  const res = await fetch(path, {
+  const res = await fetch(BASE + path, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
