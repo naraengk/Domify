@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+body {
+  font-feature-settings: "cv11", "ss01";
+  background: #fafaf7;
+}
+
+/* page background gets a faint warm tint with a soft indigo halo at the top */
+.app-bg {
+  background:
+    radial-gradient(900px 360px at 12% -120px, rgba(99, 102, 241, 0.07), transparent 60%),
+    radial-gradient(700px 300px at 85% -160px, rgba(99, 102, 241, 0.04), transparent 65%),
+    #fafaf7;
+}
+
+/* scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8; border-radius: 8px;
+  border: 2px solid transparent; background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: #a1a1aa; background-clip: padding-box; border: 2px solid transparent; }
+
+/* tinted focus ring on accent */
+*:focus-visible { outline: 2px solid #6366f1; outline-offset: 2px; border-radius: 8px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible { outline: none; }
+
+/* tabular numbers utility (already in tailwind via font-variant-numeric, this is a shortcut) */
+.tnum { font-variant-numeric: tabular-nums; }
