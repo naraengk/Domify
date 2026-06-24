@@ -9,6 +9,7 @@ import {
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import { Button, Modal, Field, Input, EmptyState, Kbd } from "../components/ui.jsx";
+import { LogoMono } from "../components/Logo.jsx";
 
 import Dashboard from "./Dashboard.jsx";
 import Chores from "./Chores.jsx";
@@ -103,7 +104,7 @@ export default function AppShell({ user, onSignOut }) {
 
           <div className="flex items-center gap-2">
             <div className="grid h-7 w-7 place-items-center rounded-lg bg-accent-grad shadow-innerTop">
-              <House size={14} className="text-white" />
+              <LogoMono size={16} className="text-white" />
             </div>
             <span className="text-[14px] font-semibold tracking-tight">Domify</span>
           </div>

@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { api, setAuth } from "../lib/api.js";
 import { Button, Card, Field, Input } from "../components/ui.jsx";
-import { House, ArrowRight, Sparkles, Wallet, ShoppingBasket, Megaphone } from "lucide-react";
+import { LogoMono } from "../components/Logo.jsx";
+import { ArrowRight, Sparkles, Wallet, ShoppingBasket, Megaphone } from "lucide-react";
 
 export default function AuthPage({ onAuth }) {
   // "login" or "register"
@@ -38,7 +39,7 @@ export default function AuthPage({ onAuth }) {
         <div className="absolute inset-0 bg-[radial-gradient(700px_360px_at_20%_0%,rgba(99,102,241,0.18),transparent_60%),radial-gradient(500px_280px_at_85%_100%,rgba(99,102,241,0.10),transparent_70%)] pointer-events-none" />
         <div className="relative flex items-center gap-2.5">
           <div className="h-8 w-8 rounded-lg bg-accent-grad grid place-items-center shadow-innerTop">
-            <House size={16} className="text-white" />
+            <LogoMono size={18} className="text-white" />
           </div>
           <span className="text-[15px] font-semibold tracking-tight">Domify</span>
         </div>
@@ -78,7 +79,7 @@ export default function AuthPage({ onAuth }) {
           {/* mobile-only brand */}
           <div className="mb-8 flex items-center gap-2.5 lg:hidden">
             <div className="h-8 w-8 rounded-lg bg-accent-grad grid place-items-center shadow-innerTop">
-              <House size={16} className="text-white" />
+              <LogoMono size={18} className="text-white" />
             </div>
             <span className="text-[15px] font-semibold tracking-tight">Domify</span>
           </div>
