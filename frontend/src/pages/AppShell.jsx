@@ -10,6 +10,7 @@ import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import { Button, Modal, Field, Input, EmptyState, Kbd } from "../components/ui.jsx";
 import { LogoMono } from "../components/Logo.jsx";
+import CommandPalette from "../components/CommandPalette.jsx";
 
 import Dashboard from "./Dashboard.jsx";
 import Chores from "./Chores.jsx";
@@ -67,6 +68,24 @@ export default function AppShell({ user, onSignOut }) {
   const [mobileNav, setMobileNav] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [joinOpen, setJoinOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // cmd+k / ctrl+k opens the command palette
+  useEffect(() => {
+    function handler(e) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((p) => !p);
+      }
+    }
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
+  // flatten the nav groups into the palette's item list
+  const paletteItems = NAV_GROUPS.flatMap((g) =>
+    g.items.map((it) => ({ key: it.key, label: it.label, icon: it.icon, group: g.label }))
+  );
 
   // pull the list of houses the user belongs to.
   // remember which one they picked last time, fall back to the first.
@@ -119,13 +138,17 @@ export default function AppShell({ user, onSignOut }) {
             </div>
           )}
 
-          {/* search */}
+          {/* search chip. clicking it (or cmd+k) opens the command palette */}
           <div className="ml-auto hidden md:flex items-center gap-2">
-            <div className="flex items-center gap-2 h-8 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-[13px] text-zinc-400 hover:bg-zinc-100 transition-colors cursor-text">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="flex items-center gap-2 h-8 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 text-[13px] text-zinc-500 hover:bg-zinc-100 hover:border-zinc-300 transition-colors"
+            >
               <Search size={13} />
-              <span>Search…</span>
+              <span>Search</span>
               <Kbd>⌘K</Kbd>
-            </div>
+            </button>
           </div>
 
           {/* right cluster */}
@@ -215,6 +238,12 @@ export default function AppShell({ user, onSignOut }) {
 
       <CreateHouseModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={(h) => loadHouses(h.id)} />
       <JoinHouseModal open={joinOpen} onClose={() => setJoinOpen(false)} onJoined={(h) => loadHouses(h.id)} />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        items={paletteItems}
+        onSelect={(it) => setView(it.key)}
+      />
     </div>
   );
 }
