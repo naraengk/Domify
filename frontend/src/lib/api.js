@@ -1,11 +1,10 @@
-// small wrapper around fetch.
-// keeps the jwt + user info in localStorage so the page survives refresh.
+// api wrapper. auth lives in an httpOnly cookie (no token in localStorage).
 
-const TOKEN_KEY = "domify_token";
 const USER_KEY = "domify_user";
+const AUTH_FLAG = "domify_authed";
 
-export function getToken() {
-  return localStorage.getItem(TOKEN_KEY);
+export function isAuthed() {
+  return localStorage.getItem(AUTH_FLAG) === "1";
 }
 
 export function getUser() {
@@ -13,33 +12,36 @@ export function getUser() {
   return raw ? JSON.parse(raw) : null;
 }
 
-export function setAuth(token, user) {
-  localStorage.setItem(TOKEN_KEY, token);
+export function setAuth(user) {
+  localStorage.setItem(AUTH_FLAG, "1");
   localStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearAuth() {
-  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(AUTH_FLAG);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem("domify_active_house");
 }
 
-// in dev/local both services run together so this stays empty.
-// in prod, set VITE_API_BASE on vercel to the backend's full url.
+// legacy. kept around so existing sessions can migrate cleanly
+export function getToken() {
+  return null;
+}
+
 const BASE = import.meta.env.VITE_API_BASE || "";
 
-// one helper for every request. handles the auth header and json parsing.
-async function req(method, path, body) {
-  const headers = { "Content-Type": "application/json" };
-  const tok = getToken();
-  if (tok) headers.Authorization = `Bearer ${tok}`;
+async function req(method, path, body, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (!(body instanceof FormData)) {
+    headers["Content-Type"] = "application/json";
+  }
   const res = await fetch(BASE + path, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    credentials: "include",
+    body: body instanceof FormData ? body : body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) {
-    // token went bad. wipe it and send the user back to login.
     clearAuth();
     if (location.pathname !== "/") location.href = "/";
     throw new Error("Not authenticated");
@@ -47,7 +49,6 @@ async function req(method, path, body) {
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
-    // fastapi puts the message in `detail`
     const msg = (data && (data.detail || data.message)) || res.statusText;
     throw new Error(typeof msg === "string" ? msg : "Request failed");
   }
@@ -60,4 +61,14 @@ export const api = {
   put: (p, b) => req("PUT", p, b),
   patch: (p, b) => req("PATCH", p, b),
   del: (p) => req("DELETE", p),
+  upload: (p, formData) => req("POST", p, formData),
 };
+
+export async function logout() {
+  try {
+    await api.post("/api/auth/logout");
+  } catch {
+    /* ignore */
+  }
+  clearAuth();
+}
