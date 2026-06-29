@@ -1,12 +1,13 @@
-// main app layout. topbar + sidebar + the active page.
-// holds the "which house am i in" state, then passes that into each page.
+// The main application shell, Renders the topbar, the sidebar (or the
+// bottom bar on mobile), and the currently selected page, Also owns the
+// "which house am I in" state and passes that down to each child page
 import { useEffect, useState } from "react";
 import {
   House, LayoutGrid, Brush, Receipt, BarChart3, ShoppingBasket,
-  Megaphone, Moon, Wrench, Scale, Users, LogOut, Plus, KeyRound,
+  Megaphone, Moon, Wrench, Scale, Users, UserCircle, LogOut, Plus, KeyRound,
   Copy, Menu, X, Bell, Search, ChevronDown, ChevronRight,
 } from "lucide-react";
-import { api } from "../lib/api.js";
+import { logout, api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import { Button, Modal, Field, Input, EmptyState, Kbd } from "../components/ui.jsx";
 import { LogoMono } from "../components/Logo.jsx";
@@ -22,8 +23,11 @@ import Quiet from "./Quiet.jsx";
 import Maintenance from "./Maintenance.jsx";
 import Conflicts from "./Conflicts.jsx";
 import HouseMembers from "./House.jsx";
+import Profile from "./Profile.jsx";
+import BottomNav from "../components/BottomNav.jsx";
 
-// sidebar grouping. add/remove pages here.
+// Sidebar navigation, grouped into three sections, To add or remove pages,
+// edit this list and the corresponding render block below.
 const NAV_GROUPS = [
   {
     label: "Workspace",
@@ -48,6 +52,7 @@ const NAV_GROUPS = [
       { key: "maintenance", label: "Maintenance",  icon: Wrench },
       { key: "conflicts",   label: "Conflict log", icon: Scale },
       { key: "house",       label: "Roommates",    icon: Users },
+      { key: "profile",     label: "Profile",      icon: UserCircle },
     ],
   },
 ];
@@ -56,10 +61,10 @@ const TITLES = {
   dashboard: "Dashboard", chores: "Chores", expenses: "Expenses",
   insights: "Insights", grocery: "Grocery", announcements: "Announcements",
   quiet: "Quiet hours", maintenance: "Maintenance",
-  conflicts: "Conflict log", house: "Roommates",
+  conflicts: "Conflict log", house: "Roommates", profile: "Profile",
 };
 
-export default function AppShell({ user, onSignOut }) {
+export default function AppShell({ user, onSignOut, onUserUpdate }) {
   const { push } = useToast();
   const [houses, setHouses] = useState([]);
   const [activeHouse, setActiveHouse] = useState(null);
@@ -70,25 +75,36 @@ export default function AppShell({ user, onSignOut }) {
   const [joinOpen, setJoinOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
 
-  // cmd+k / ctrl+k opens the command palette
+  // Global keyboard shortcuts
+  // Cmd+K (or Ctrl+K) toggles the command
+  // palette. Single-letter shortcuts are reserved for future quick actions
+  // and are ignored when the user is typing in a form field
   useEffect(() => {
     function handler(e) {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         setPaletteOpen((p) => !p);
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const tag = e.target?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return;
+      if (e.key.toLowerCase() === "n" && view === "expenses") {
+        /* reserved for opening the new-expense modal from the keyboard */
       }
     }
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [view]);
 
-  // flatten the nav groups into the palette's item list
+  // Flatten the nav groups into a single list for the command palette
   const paletteItems = NAV_GROUPS.flatMap((g) =>
     g.items.map((it) => ({ key: it.key, label: it.label, icon: it.icon, group: g.label }))
   );
 
-  // pull the list of houses the user belongs to.
-  // remember which one they picked last time, fall back to the first.
+  // Load the list of houses the user belongs to. The active house is the
+  // one they had selected last session, or the first house in the list if
+  // there is no saved selection
   async function loadHouses(preferId = null) {
     const list = await api.get("/api/houses/mine");
     setHouses(list);
@@ -181,7 +197,7 @@ export default function AppShell({ user, onSignOut }) {
               </div>
               <span className="text-[13px] text-zinc-700 font-medium max-w-[120px] truncate">{user?.name}</span>
             </div>
-            <Button size="sm" variant="ghost" onClick={onSignOut} aria-label="Sign out">
+            <Button size="sm" variant="ghost" onClick={async () => { await logout(); onSignOut(); }} aria-label="Sign out">
               <LogOut size={14} />
             </Button>
           </div>
@@ -214,7 +230,7 @@ export default function AppShell({ user, onSignOut }) {
           </div>
         )}
 
-        <main className="flex-1 min-w-0 overflow-y-auto">
+        <main className="flex-1 min-w-0 overflow-y-auto pb-16 lg:pb-0">
           <div className="mx-auto max-w-6xl px-4 py-7 sm:px-8 sm:py-10">
             {!activeHouse ? (
               <OnboardingPanel onCreate={() => setCreateOpen(true)} onJoin={() => setJoinOpen(true)} />
@@ -224,17 +240,20 @@ export default function AppShell({ user, onSignOut }) {
                 {view === "chores" && <Chores ctx={ctx} />}
                 {view === "expenses" && <Expenses ctx={ctx} user={user} />}
                 {view === "insights" && <Insights ctx={ctx} />}
-                {view === "grocery" && <Grocery ctx={ctx} />}
+                {view === "grocery" && <Grocery ctx={ctx} members={members} />}
                 {view === "announcements" && <Announcements ctx={ctx} />}
                 {view === "quiet" && <Quiet ctx={ctx} />}
                 {view === "maintenance" && <Maintenance ctx={ctx} />}
                 {view === "conflicts" && <Conflicts ctx={ctx} />}
                 {view === "house" && <HouseMembers ctx={ctx} user={user} onLeave={() => loadHouses()} />}
+                {view === "profile" && <Profile user={user} onUserUpdate={onUserUpdate} />}
               </>
             )}
           </div>
         </main>
       </div>
+
+      {activeHouse && <BottomNav view={view} setView={setView} />}
 
       <CreateHouseModal open={createOpen} onClose={() => setCreateOpen(false)} onCreated={(h) => loadHouses(h.id)} />
       <JoinHouseModal open={joinOpen} onClose={() => setJoinOpen(false)} onJoined={(h) => loadHouses(h.id)} />
