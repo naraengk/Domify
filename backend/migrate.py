@@ -23,9 +23,11 @@ _USER_COLUMNS = {
 }
 
 # Columns that should exist on the house_members table
+# TIMESTAMP works on both SQLite and Postgres. DATETIME is SQLite-only and
+# would break on Neon Postgres in production
 _MEMBER_COLUMNS = {
-    "move_in_date": "DATETIME",
-    "move_out_date": "DATETIME",
+    "move_in_date": "TIMESTAMP",
+    "move_out_date": "TIMESTAMP",
 }
 
 
