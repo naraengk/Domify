@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+# Pydantic schemas used by the API, Each section below groups together the
+# request and response models for one feature area (auth, houses, expenses etc.
+
 from datetime import datetime
 from typing import Optional, List
 from pydantic import BaseModel, EmailStr, Field
@@ -24,6 +27,39 @@ class UserOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# Full profile response, Returned by GET /api/profile/me and after a PATCH
+# or avatar upload
+class ProfileOut(BaseModel):
+    id: int
+    name: str
+    email: EmailStr
+    avatar_url: str = ""
+    bio: str = ""
+    pronouns: str = ""
+    venmo_handle: str = ""
+    zelle_handle: str = ""
+    phone: str = ""
+    dietary_restrictions: str = ""
+    chore_preferences: str = ""
+    timezone: str = "America/New_York"
+
+    class Config:
+        from_attributes = True
+
+
+# Request body for partial profile updates. Every field is optional so the
+# client can send only the values that changed.
+class ProfileUpdate(BaseModel):
+    bio: Optional[str] = None
+    pronouns: Optional[str] = None
+    venmo_handle: Optional[str] = None
+    zelle_handle: Optional[str] = None
+    phone: Optional[str] = None
+    dietary_restrictions: Optional[str] = None
+    chore_preferences: Optional[str] = None
+    timezone: Optional[str] = None
 
 
 class TokenOut(BaseModel):
@@ -59,6 +95,18 @@ class MemberOut(BaseModel):
     email: EmailStr
     role: str
     joined_at: datetime
+    avatar_url: str = ""
+    bio: str = ""
+    pronouns: str = ""
+    venmo_handle: str = ""
+    zelle_handle: str = ""
+    phone: str = ""
+    dietary_restrictions: str = ""
+    chore_preferences: str = ""
+    timezone: str = "America/New_York"
+    move_in_date: Optional[datetime] = None
+    move_out_date: Optional[datetime] = None
+    is_archived: bool = False
 
     class Config:
         from_attributes = True
@@ -101,14 +149,19 @@ class ChoreCompletionOut(BaseModel):
 # ---- expenses ----
 class ExpenseSplitIn(BaseModel):
     user_id: int
-    amount_owed: float
+    # A value of zero means the member is not part of this split
+    # Negative values are not allowed
+    amount_owed: float = Field(ge=0, le=1_000_000)
 
 
 class ExpenseCreate(BaseModel):
     title: str
     category: str = "general"
-    amount: float
-    # if splits is empty we split equally between all current members
+    # Expense amount must be positive, The upper bound prevents a typo
+    # from creating an enormous balance
+    amount: float = Field(gt=0, le=1_000_000)
+    # If the splits list is empty, the server divides the amount equally
+    # between all current house members
     splits: List[ExpenseSplitIn] = []
 
 
@@ -138,7 +191,9 @@ class BalanceOut(BaseModel):
 
 class SettleIn(BaseModel):
     to_user: int
-    amount: float
+    # Settlement amounts must be positive. Zero or negative values would
+    # otherwise produce phantom payments and corrupt balances
+    amount: float = Field(gt=0, le=1_000_000)
 
 
 # ---- grocery ----
@@ -163,8 +218,8 @@ class GroceryOut(BaseModel):
 
 # ---- announcements ----
 class AnnouncementCreate(BaseModel):
-    title: str
-    message: str = ""
+    title: str = Field(max_length=200)
+    message: str = Field(default="", max_length=5000)
     urgency: str = "normal"
     is_pinned: bool = False
 
@@ -235,8 +290,8 @@ class MaintenanceOut(BaseModel):
 
 # ---- conflict log ----
 class ConflictCreate(BaseModel):
-    title: str
-    description: str = ""
+    title: str = Field(max_length=200)
+    description: str = Field(default="", max_length=5000)
 
 
 class ConflictOut(BaseModel):

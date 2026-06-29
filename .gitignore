@@ -1,7 +1,15 @@
-__pycache__/
-*.pyc
-*.db
-.env
-.venv/
-.pytest_cache/
-.DS_Store
+# editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# os
+Thumbs.db
+
+# local logs
+*.log
+
+# uploaded avatar files. user-generated content, not source.
+backend/uploads/

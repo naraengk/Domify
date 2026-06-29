@@ -1,17 +1,20 @@
-// top-level component. picks between the auth screen and the main app.
+// Root component
+// Chooses between the auth screen and the signed in app
+// based on the current session state
 import { useEffect, useState } from "react";
-import { api, getToken, getUser, clearAuth } from "./lib/api.js";
+import { api, isAuthed, getUser, clearAuth } from "./lib/api.js";
 import { ToastProvider } from "./lib/toast.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
 import AppShell from "./pages/AppShell.jsx";
 
 export default function App() {
-  // tiny "router". just two top-level views, no react-router needed
-  const [authed, setAuthed] = useState(!!getToken());
+  // Initial state is read from localStorage so a page reload does not
+  // briefly flash the auth screen for a signed-in user
+  const [authed, setAuthed] = useState(isAuthed());
   const [user, setUser] = useState(getUser());
 
-  // on first load, if we have a token, check it's still valid.
-  // if the server rejects it, clear it and show the auth screen.
+  // On mount, verify the session with the server, if the cookie is missing
+  // or expired the API will return 401 and we clear the local state
   useEffect(() => {
     if (!authed) return;
     api.get("/api/auth/me").then(setUser).catch(() => {
@@ -23,7 +26,11 @@ export default function App() {
   return (
     <ToastProvider>
       {authed ? (
-        <AppShell user={user} onSignOut={() => { clearAuth(); setAuthed(false); }} />
+        <AppShell
+          user={user}
+          onSignOut={() => { clearAuth(); setAuthed(false); }}
+          onUserUpdate={setUser}
+        />
       ) : (
         <AuthPage onAuth={(u) => { setUser(u); setAuthed(true); }} />
       )}

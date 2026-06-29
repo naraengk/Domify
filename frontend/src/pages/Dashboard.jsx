@@ -11,10 +11,13 @@ import {
 import KpiCard from "../components/KpiCard.jsx";
 import { money, timeAgo } from "../lib/format.js";
 
-// dashboard landing page. heroish greeting + 4 kpi cards + two lists.
+// Dashboard landing page, Shows a personalized greeting, four KPI cards,
+// and short lists of the user's pending chores and recent announcements
 
-// turn a list of timestamped things into a 7-day count, one bucket per day.
-// used to draw the little sparklines on the kpi cards.
+// Convert a list of timestamped records into a 7-day series, Each bucket
+// represents one of the last seven calendar days and counts how many
+// records fell on that date. Used to drive the sparklines in the KPI cards
+
 function buildWeekSeries(items, tsField) {
   const buckets = Array.from({ length: 7 }, (_, i) => {
     const d = new Date();
@@ -36,21 +39,30 @@ export default function Dashboard({ ctx, user, onGo }) {
   const { push } = useToast();
   const [data, setData] = useState(null);
 
-  // grab everything we need for the dashboard in parallel
+  // Fetch all dashboard data in parallel, Each request is wrapped in safe()
+  // so that a single failed endpoint does not prevent the rest of the page
+  // from rendering. A failed call resolves to an empty array, which the
+  // section components already render as their normal empty state
   async function load() {
     const hid = house.id;
+    const safe = async (p, label) => {
+      try { return await p; }
+      catch (e) { console.warn(`dashboard: ${label} failed`, e.message); return []; }
+    };
     const [chores, balances, grocery, anns, history] = await Promise.all([
-      api.get(`/api/houses/${hid}/chores`),
-      api.get(`/api/houses/${hid}/expenses/balances`),
-      api.get(`/api/houses/${hid}/grocery`),
-      api.get(`/api/houses/${hid}/announcements`),
-      api.get(`/api/houses/${hid}/chores/history`),
+      safe(api.get(`/api/houses/${hid}/chores`), "chores"),
+      safe(api.get(`/api/houses/${hid}/expenses/balances`), "balances"),
+      safe(api.get(`/api/houses/${hid}/grocery`), "grocery"),
+      safe(api.get(`/api/houses/${hid}/announcements`), "announcements"),
+      safe(api.get(`/api/houses/${hid}/chores/history`), "history"),
     ]);
     setData({ chores, balances, grocery, anns, history });
   }
   useEffect(() => { load(); }, [house.id]);
 
-  // hooks must run on every render, so keep them above the early return
+  // The useMemo calls below must run on every render, including the first
+  // one when `data` is still null, They are placed above the early return
+  // so React's rules of hooks are not violated
   const choreSeries = useMemo(
     () => buildWeekSeries(data?.history || [], "completed_at"),
     [data?.history]
@@ -67,7 +79,8 @@ export default function Dashboard({ ctx, user, onGo }) {
   if (!data) return <Skeleton />;
 
   const firstName = (user?.name || "").split(" ")[0] || "there";
-  // greeting that shifts with time of day. tiny touch but it makes the page feel alive.
+  // Greeting that adjusts to the current hour, Small detail but it makes
+  // the dashboard feel more responsive to the user
   const greeting = (() => {
     const h = new Date().getHours();
     if (h < 5) return "Up late";
@@ -83,25 +96,31 @@ export default function Dashboard({ ctx, user, onGo }) {
   const unread = data.anns.filter((a) => !a.is_read);
   const myBal = data.balances.find((b) => b.user_id === user.id);
 
-  // deltas: this-week-so-far vs prior 7-day average
+  // Totals derived from the seven-day series, Used as the headline numbers
+  // on the corresponding KPI cards
   const choresThisWeek = choreSeries.reduce((a, b) => a + b.y, 0);
   const annsThisWeek = annSeries.reduce((a, b) => a + b.y, 0);
 
   return (
     <div className="flex flex-col gap-7">
-      {/* hero band */}
-      <FeatureCard className="px-6 py-6 sm:px-8 sm:py-7">
-        <div className="absolute inset-0 bg-hero-halo pointer-events-none" />
-        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      {/* hero band, dark blue gradient backdrop
+          fancy-hero adds the slow revolving color wheel and hover shake */}
+      <FeatureCard className="fancy-hero px-6 py-6 sm:px-8 sm:py-7 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-700/90 via-blue-600/85 to-blue-900/90 pointer-events-none" />
+        {/* the revolving wheel sits over the base gradient.
+            mix-blend-screen keeps it soft instead of muddy */}
+        <div className="absolute inset-0 hero-revolve pointer-events-none mix-blend-screen opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(255,255,255,0.12),transparent_55%)] pointer-events-none" />
+        <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between text-white">
           <div>
-            <div className="flex items-center gap-1.5 text-[12px] font-medium text-zinc-500">
-              <Calendar size={12} className="text-accent-500" />
+            <div className="flex items-center gap-1.5 text-xs font-medium text-blue-100">
+              <Calendar size={12} />
               {today}
             </div>
-            <h1 className="mt-1.5 text-[28px] sm:text-[30px] font-semibold tracking-tight text-zinc-900 leading-tight">
+            <h1 className="mt-1.5 text-3xl font-semibold tracking-tight leading-tight">
               {greeting}, {firstName}.
             </h1>
-            <p className="mt-1 text-[14px] text-zinc-500 max-w-xl">
+            <p className="mt-1 text-sm text-blue-100/90 max-w-xl">
               {overdue.length > 0
                 ? `${overdue.length} of your chores are overdue. Knock one out?`
                 : myPending.length > 0
@@ -138,13 +157,28 @@ export default function Dashboard({ ctx, user, onGo }) {
           </div>
 
           <div className="flex flex-wrap gap-2 shrink-0">
-            <Button variant="primary" onClick={() => onGo("expenses")}>
+            {/* mini stats embedded in hero */}
+            <div className="hidden sm:flex gap-2 mr-2">
+              <MiniStat label="Chores" value={myPending.length} />
+              <MiniStat label="Balance" value={myBal ? money(myBal.net) : "$0"} />
+              <MiniStat label="Grocery" value={needed.length} />
+            </div>
+            <Button variant="primary" className="bg-white/15 border-white/25 text-white hover:bg-white/25" onClick={() => onGo("expenses")}>
               <Plus size={14} /> Add expense
             </Button>
-            <Button onClick={() => onGo("chores")}>
+            {/* blue chore button so it stands out from announce */}
+            <Button
+              variant="primary"
+              className="bg-blue-600 border-blue-700 hover:bg-blue-700"
+              onClick={() => onGo("chores")}
+            >
               <Plus size={14} /> Add chore
             </Button>
-            <Button variant="ghost" onClick={() => onGo("announcements")}>
+            {/* white announce button, reads as a plain card on the blue hero */}
+            <Button
+              className="bg-white border-white text-zinc-800 hover:bg-zinc-50"
+              onClick={() => onGo("announcements")}
+            >
               <Plus size={14} /> Announce
             </Button>
           </div>
@@ -176,6 +210,13 @@ export default function Dashboard({ ctx, user, onGo }) {
             icon={Wallet}
             tone={myBal?.net > 0.01 ? "success" : myBal?.net < -0.01 ? "danger" : "default"}
             hint={myBal?.net > 0.01 ? "owed to you" : myBal?.net < -0.01 ? "you owe" : "settled up"}
+            cta={
+              myBal && myBal.net < -0.01 ? (
+                <Button size="sm" variant="subtle" className="w-full" onClick={() => onGo("expenses")}>
+                  Settle now
+                </Button>
+              ) : null
+            }
           />
           <KpiCard
             label="Grocery items"
@@ -319,12 +360,21 @@ export default function Dashboard({ ctx, user, onGo }) {
   );
 }
 
-// small inline icon, avoids another import
+// Small inline SVG icon, Defined locally to avoid importing yet another icon for a single use
 function BarChart3Icon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M3 3v18h18" /><path d="M7 16v-7" /><path d="M12 16v-4" /><path d="M17 16V8" />
     </svg>
+  );
+}
+
+function MiniStat({ label, value }) {
+  return (
+    <div className="rounded-xl bg-white/10 backdrop-blur px-3 py-2 ring-1 ring-white/20">
+      <div className="text-[10px] uppercase tracking-wide text-blue-100/80">{label}</div>
+      <div className="text-sm font-semibold tnum">{value}</div>
+    </div>
   );
 }
 
