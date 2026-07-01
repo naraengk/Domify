@@ -49,7 +49,7 @@ def create_expense(house_id: int, data: ExpenseCreate, user: User = Depends(get_
     member_ids = [m.user_id for m in members]
 
     splits_in = data.splits
-    # default split: equal across all current members
+    # default split, equal across all current members
     if not splits_in:
         share = round(data.amount / len(member_ids), 2)
         splits_in = [type("S", (), {"user_id": uid, "amount_owed": share}) for uid in member_ids]
@@ -187,7 +187,8 @@ def insights(house_id: int, user: User = Depends(get_current_user), db: Session 
         ORDER BY total DESC
     """), {"h": house_id}).all()
 
-    # rough month-over-month: this month vs last month total spend
+    # rough month-over-month
+    # this month vs last month total spend
     mom = db.execute(text("""
         SELECT strftime('%Y-%m', created_at) AS ym, SUM(amount) AS total
         FROM expenses WHERE house_id = :h
