@@ -1,5 +1,6 @@
-// expenses page. shows balances at the top + the full ledger below.
-// "settle" button only shows up for people you actually owe money to.
+// expenses page
+// shows balances at the top and the full ledger below
+// settle button only shows up for people you actually owe money to
 import { useEffect, useState } from "react";
 import { Plus, Receipt, Trash2, Wallet, ArrowDownUp } from "lucide-react";
 import { api } from "../lib/api.js";
@@ -152,7 +153,7 @@ export default function Expenses({ ctx, user }) {
   );
 }
 
-// modal for adding a new expense. supports equal split or custom amounts per person.
+// modal for adding a new expense, supports equal split or custom amounts per person
 function NewExpenseModal({ open, onClose, members, houseId, onCreated }) {
   const { push } = useToast();
   const [title, setTitle] = useState("");
