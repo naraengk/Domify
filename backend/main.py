@@ -14,6 +14,7 @@ from security import RateLimitMiddleware
 from routers import (
     auth_router, houses, chores, expenses, grocery,
     announcements, quiet_hours, maintenance, conflicts, profile,
+    notifications,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -40,6 +41,7 @@ app.include_router(announcements.router)
 app.include_router(quiet_hours.router)
 app.include_router(maintenance.router)
 app.include_router(conflicts.router)
+app.include_router(notifications.router)
 
 UPLOADS = os.path.join(os.path.dirname(__file__), "uploads")
 if os.path.isdir(UPLOADS):
