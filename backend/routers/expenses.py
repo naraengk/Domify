@@ -88,18 +88,20 @@ def balances(house_id: int, user: User = Depends(get_current_user), db: Session 
     # net per user = what they're owed - what they owe
     require_house_member(house_id, user, db)
     # raw SQL gets us totals per user efficiently
+    # Use NOT es.is_settled for portability across SQLite, stores bool as 0/1
+    # and Postgres, rejects boolean = integer comparison
     sql_owed = text("""
         SELECT es.user_id, COALESCE(SUM(es.amount_owed), 0) AS owed
         FROM expense_splits es
         JOIN expenses e ON e.id = es.expense_id
-        WHERE e.house_id = :h AND es.is_settled = 0 AND es.user_id != e.paid_by
+        WHERE e.house_id = :h AND NOT es.is_settled AND es.user_id != e.paid_by
         GROUP BY es.user_id
     """)
     sql_paid_for_others = text("""
         SELECT e.paid_by AS user_id, COALESCE(SUM(es.amount_owed), 0) AS lent
         FROM expenses e
         JOIN expense_splits es ON es.expense_id = e.id
-        WHERE e.house_id = :h AND es.is_settled = 0 AND es.user_id != e.paid_by
+        WHERE e.house_id = :h AND NOT es.is_settled AND es.user_id != e.paid_by
         GROUP BY e.paid_by
     """)
     owed_map = {r.user_id: float(r.owed) for r in db.execute(sql_owed, {"h": house_id})}
