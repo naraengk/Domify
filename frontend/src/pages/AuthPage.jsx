@@ -87,11 +87,9 @@ export default function AuthPage({ onAuth }) {
           <h2 className="text-2xl font-semibold tracking-tight">
             {mode === "login" ? "Sign in" : "Create your account"}
           </h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            {mode === "login"
-              ? "Welcome back."
-              : "It takes ten seconds, no credit card."}
-          </p>
+          {mode === "login" && (
+            <p className="mt-1 text-sm text-zinc-500">Welcome back.</p>
+          )}
 
           <Card className="mt-6 shadow-none">
             <form onSubmit={submit} className="flex flex-col gap-3 p-5">
