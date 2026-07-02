@@ -2,17 +2,18 @@ import { useEffect, useState } from "react";
 import { ShoppingBasket, Plus, Trash2, Check, Eraser } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
-import { Button, Card, CardHeader, CardBody, EmptyState, Input, Select } from "../components/ui.jsx";
+import { Button, Card, CardHeader, CardBody, EmptyState, Input, Select, LoadingCard } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 
-// grocery list. anyone can add, anyone can check off.
+// grocery list
+// anyone can add, anyone can check off
 
 const CATEGORIES = ["produce", "dairy", "pantry", "frozen", "cleaning", "other"];
 
 export default function Grocery({ ctx }) {
   const { house } = ctx;
   const { push } = useToast();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(null);
   const [form, setForm] = useState({ name: "", quantity: "", category: "other" });
 
   async function load() {
@@ -22,7 +23,7 @@ export default function Grocery({ ctx }) {
 
   // bucket items by their category so we can render one section per group
   const byCat = {};
-  items.forEach((it) => {
+  (items ?? []).forEach((it) => {
     const k = it.category || "other";
     (byCat[k] = byCat[k] || []).push(it);
   });
@@ -82,7 +83,9 @@ export default function Grocery({ ctx }) {
         </form>
       </Card>
 
-      {items.length === 0 ? (
+      {items === null ? (
+        <LoadingCard />
+      ) : items.length === 0 ? (
         <Card>
           <CardBody>
             <EmptyState icon={ShoppingBasket} title="Nothing on the list" hint="Add the first item above." />

@@ -1,20 +1,21 @@
-// announcements feed. cards have a colored left bar based on urgency.
-// hovering over an unread one marks it read.
+// announcements feed, cards have a colored left bar based on urgency
+// hovering over an unread one marks it read
 import { useEffect, useState } from "react";
-import { Megaphone, Plus, Pin, Trash2 } from "lucide-react";
+import { Megaphone, Plus, Pin, Trash2, Pencil } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardBody, EmptyState, Modal, Field, Input, Textarea, Select, Pill,
+  Button, Card, CardBody, EmptyState, Modal, Field, Input, Textarea, Select, Pill, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { timeAgo } from "../lib/format.js";
 
-export default function Announcements({ ctx }) {
+export default function Announcements({ ctx, user }) {
   const { house } = ctx;
   const { push } = useToast();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(null);
   const [open, setOpen] = useState(false);
+  const [editing, setEditing] = useState(null);
   const isAdmin = house.role === "admin";
 
   async function load() {
@@ -35,7 +36,9 @@ export default function Announcements({ ctx }) {
         }
       />
 
-      {items.length === 0 ? (
+      {items === null ? (
+        <LoadingCard />
+      ) : items.length === 0 ? (
         <Card><CardBody><EmptyState icon={Megaphone} title="No announcements yet" /></CardBody></Card>
       ) : (
         <div className="flex flex-col gap-3">
@@ -44,6 +47,8 @@ export default function Announcements({ ctx }) {
               key={a.id}
               a={a}
               isAdmin={isAdmin}
+              canEdit={user && (a.created_by === user.id || isAdmin)}
+              onEdit={() => setEditing(a)}
               houseId={house.id}
               onChange={load}
             />
@@ -58,11 +63,18 @@ export default function Announcements({ ctx }) {
         houseId={house.id}
         onCreated={() => { setOpen(false); load(); }}
       />
+
+      <EditAnnouncementModal
+        ann={editing}
+        onClose={() => setEditing(null)}
+        houseId={house.id}
+        onSaved={() => { setEditing(null); load(); }}
+      />
     </div>
   );
 }
 
-function AnnouncementItem({ a, isAdmin, houseId, onChange }) {
+function AnnouncementItem({ a, isAdmin, canEdit, onEdit, houseId, onChange }) {
   const accentBar =
     a.urgency === "high" ? "before:bg-rose-500"
     : a.urgency === "low" ? "before:bg-zinc-300"
@@ -94,6 +106,15 @@ function AnnouncementItem({ a, isAdmin, houseId, onChange }) {
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             <UrgencyPill urgency={a.urgency} />
+            {canEdit && (
+              <button
+                className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"
+                onClick={onEdit}
+                aria-label="Edit"
+              >
+                <Pencil size={14} />
+              </button>
+            )}
             {isAdmin && (
               <button
                 className="rounded-md p-1.5 text-zinc-500 hover:bg-zinc-100"
@@ -171,6 +192,49 @@ function NewAnnouncementModal({ open, onClose, isAdmin, houseId, onCreated }) {
           </label>
         )}
         <Button variant="primary" className="mt-2">Post</Button>
+      </form>
+    </Modal>
+  );
+}
+
+function EditAnnouncementModal({ ann, onClose, houseId, onSaved }) {
+  const { push } = useToast();
+  const [form, setForm] = useState({ title: "", message: "", urgency: "normal" });
+
+  // Load the current values into the form whenever a new announcement is
+  // opened for editing. Keeping this in an effect avoids a stale-form flash
+  // when switching between rows
+  useEffect(() => {
+    if (ann) setForm({ title: ann.title, message: ann.message, urgency: ann.urgency });
+  }, [ann?.id]);
+
+  return (
+    <Modal open={!!ann} title="Edit announcement" onClose={onClose}>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            await api.patch(`/api/houses/${houseId}/announcements/${ann.id}`, form);
+            push("Updated", "success");
+            onSaved();
+          } catch (err) { push(err.message, "error"); }
+        }}
+        className="flex flex-col gap-3"
+      >
+        <Field label="Title">
+          <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required />
+        </Field>
+        <Field label="Message">
+          <Textarea value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} rows={4} />
+        </Field>
+        <Field label="Urgency">
+          <Select value={form.urgency} onChange={(e) => setForm({ ...form, urgency: e.target.value })}>
+            <option value="low">Low</option>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+          </Select>
+        </Field>
+        <Button variant="primary" className="mt-2">Save changes</Button>
       </form>
     </Modal>
   );

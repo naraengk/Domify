@@ -1,13 +1,14 @@
 import { useEffect } from "react";
 import { X } from "lucide-react";
 
-// the reusable bits used everywhere: buttons, cards, modal, etc.
-// nothing fancy, just keeps the styles in one place.
+// the reusable bits used everywhere
+// buttons, cards, modal, etc
 
-// tiny helper so i can build classnames conditionally
+// tiny helper to build classnames conditionally
 function clx(...parts) { return parts.filter(Boolean).join(" "); }
 
-// button. variants cover default / primary / ghost / subtle / danger
+// button
+// variants cover default/primary/ghost/subtle/danger
 export function Button({
   as: Tag = "button",
   variant = "default",
@@ -39,7 +40,8 @@ export function Button({
   );
 }
 
-// cards. plain Card for most things, FeatureCard for the dashboard hero
+// cards
+// plain Card for most things, FeatureCard for the dashboard hero
 export function Card({ className = "", hover = false, children, ...rest }) {
   return (
     <div
@@ -121,7 +123,8 @@ export function Pill({ children, variant = "default", className = "" }) {
   );
 }
 
-// form fields. all three share the same look via inputBase
+// form fields
+// all three share the same look via inputBase
 export function Field({ label, hint, children }) {
   return (
     <label className="flex flex-col gap-1.5 text-sm">
@@ -161,7 +164,8 @@ export function Textarea({ className = "", rows = 3, ...rest }) {
   );
 }
 
-// modal. clicks outside or escape close it
+// modal
+// clicks outside or escape close it
 export function Modal({ open, title, onClose, children }) {
   useEffect(() => {
     if (!open) return;
@@ -219,7 +223,20 @@ export function EmptyState({ icon: Icon, title, hint, action, compact = false })
   );
 }
 
-// little keyboard-key chip, like ⌘K in the search slot
+// Loading placeholder used while a page's data is being fetched. Renders
+// a stack of subtle pulsing cards so the layout does not jump when data
+// arrives
+export function LoadingCard({ rows = 3 }) {
+  return (
+    <div className="flex flex-col gap-3 animate-pulse">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="h-16 rounded-2xl bg-zinc-100/70" />
+      ))}
+    </div>
+  );
+}
+
+// little keyboard-key chip
 export function Kbd({ children }) {
   return (
     <kbd className="inline-flex h-5 min-w-[20px] items-center justify-center rounded border border-zinc-200 bg-zinc-50 px-1.5 text-[10.5px] font-medium text-zinc-500 shadow-[inset_0_-1px_0_0_rgba(0,0,0,0.04)]">

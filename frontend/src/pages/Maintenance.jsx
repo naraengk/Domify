@@ -1,10 +1,11 @@
-// maintenance requests. report things, assign them, move them through statuses.
+// maintenance requests
+// report things, assign them, move them through statuses
 import { useEffect, useState } from "react";
 import { Wrench, Plus, Trash2 } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardBody, EmptyState, Modal, Field, Input, Select, Textarea, Pill,
+  Button, Card, CardBody, EmptyState, Modal, Field, Input, Select, Textarea, Pill, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { timeAgo } from "../lib/format.js";
@@ -12,7 +13,7 @@ import { timeAgo } from "../lib/format.js";
 export default function Maintenance({ ctx }) {
   const { house, members } = ctx;
   const { push } = useToast();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(null);
   const [open, setOpen] = useState(false);
 
   async function load() {
@@ -38,7 +39,9 @@ export default function Maintenance({ ctx }) {
         }
       />
 
-      {items.length === 0 ? (
+      {items === null ? (
+        <LoadingCard />
+      ) : items.length === 0 ? (
         <Card><CardBody><EmptyState icon={Wrench} title="No maintenance requests" /></CardBody></Card>
       ) : (
         <div className="flex flex-col gap-3">

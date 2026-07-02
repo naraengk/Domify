@@ -242,7 +242,7 @@ export default function AppShell({ user, onSignOut, onUserUpdate }) {
                 {view === "expenses" && <Expenses ctx={ctx} user={user} />}
                 {view === "insights" && <Insights ctx={ctx} />}
                 {view === "grocery" && <Grocery ctx={ctx} members={members} />}
-                {view === "announcements" && <Announcements ctx={ctx} />}
+                {view === "announcements" && <Announcements ctx={ctx} user={user} />}
                 {view === "quiet" && <Quiet ctx={ctx} />}
                 {view === "maintenance" && <Maintenance ctx={ctx} />}
                 {view === "conflicts" && <Conflicts ctx={ctx} />}

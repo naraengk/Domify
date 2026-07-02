@@ -6,7 +6,7 @@ import { Plus, Receipt, Trash2, Wallet, ArrowDownUp } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardHeader, CardBody, EmptyState, Modal, Field, Input, Select,
+  Button, Card, CardHeader, CardBody, EmptyState, Modal, Field, Input, Select, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { money, timeAgo } from "../lib/format.js";
@@ -14,7 +14,7 @@ import { money, timeAgo } from "../lib/format.js";
 export default function Expenses({ ctx, user }) {
   const { house, members } = ctx;
   const { push } = useToast();
-  const [expenses, setExpenses] = useState([]);
+  const [expenses, setExpenses] = useState(null);
   const [balances, setBalances] = useState([]);
   const [open, setOpen] = useState(false);
   const [settleTo, setSettleTo] = useState(null);
@@ -87,7 +87,9 @@ export default function Expenses({ ctx, user }) {
       <Card>
         <CardHeader title="All expenses" icon={Receipt} />
         <CardBody className="pt-0 px-0">
-          {expenses.length === 0 ? (
+          {expenses === null ? (
+            <div className="p-5"><LoadingCard rows={3} /></div>
+          ) : expenses.length === 0 ? (
             <EmptyState icon={Receipt} title="No expenses yet" hint="Click 'New expense' to add the first one." />
           ) : (
             <ul className="divide-y divide-zinc-100">
