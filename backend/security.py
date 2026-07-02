@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-# defensive helpers used across the api: text sanitizing, urgency normalizing,
-# and a small in-process rate limiter to slow down brute-force attempts
+# defensive helpers used across the api
+# text sanitizing, urgency normalizing, and a small in-process rate limiter 
+# to slow down brute-force attempts
 
 import html
 import os
@@ -14,7 +15,8 @@ from fastapi import HTTPException, Request, status
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
-# very basic html tag stripper. we then re-escape anything left so user text
+# very basic html tag stripper
+# we then re-escape anything left so user text
 # can't sneak script tags into the page when it's rendered later
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -44,7 +46,7 @@ def normalize_urgency(value: str) -> str:
 
 # bare-bones in-memory rate limiter
 # one process only, which is fine for a
-# single render service. would need redis if we ever ran multiple workers
+# single render service, would need redis if we ever ran multiple workers
 class RateLimiter:
     def __init__(self, max_requests: int = 10, window_seconds: int = 60):
         self.max_requests = max_requests
@@ -53,7 +55,7 @@ class RateLimiter:
         self._hits: dict[str, list[float]] = defaultdict(list)
 
     def check(self, key: str) -> None:
-        # raises 429 if this key has exceeded its budget in the last window.
+        # raises 429 if this key has exceeded its budget in the last window
         # otherwise records the hit and returns
         now = time.time()
         window_start = now - self.window_seconds
@@ -118,27 +120,74 @@ class OriginCheckMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-# A frozen bcrypt hash used to burn the same CPU as a real verify when the
-# email in a login attempt does not exist. Prevents timing-based email
+# A real bcrypt hash used to burn the same CPU as a real verify when the
+# email in a login attempt does not exist, Prevents timing-based email
 # enumeration since bcrypt is the dominant cost in the login path
-_DUMMY_BCRYPT_HASH = (
-    "$2b$12$abcdefghijklmnopqrstuv"
-    "wxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01"
-)
+# Generated lazily with the same context as real hashes so the work factor
+# always matches, A hardcoded string is not used because a malformed hash
+# makes passlib fail fast, which would reintroduce the timing difference
+_dummy_hash: Optional[str] = None
 
 
 def constant_time_password_verify(plain: str, hashed: Optional[str]) -> bool:
     # If the user record does not exist, hashed is None. Run bcrypt on the
     # dummy hash so the response time matches the real-user path, then
     # return False. Keep the actual comparison for existing users
-    from auth import verify_password as _verify
+    global _dummy_hash
+    from auth import pwd_context
+    if _dummy_hash is None:
+        _dummy_hash = pwd_context.hash("placeholder-for-timing")
     if hashed is None:
         try:
-            _verify(plain, _DUMMY_BCRYPT_HASH)
+            pwd_context.verify(plain, _dummy_hash)
         except Exception:
             pass
         return False
-    return _verify(plain, hashed)
+    try:
+        return pwd_context.verify(plain, hashed)
+    except Exception:
+        return False
+
+
+# Blocklist for names that other members of a house will see, Passwords are
+# deliberately not filtered: they are hashed, never displayed to anyone, and
+# restricting their content only shrinks the search space for an attacker
+
+# Two tiers, SLUR_SUBSTRINGS match anywhere in the text because they are
+# unambiguous even when embedded in a longer word. PROFANITY_WORDS match on
+# word boundaries only, to avoid rejecting names like Essex or Dickens
+_SLUR_SUBSTRINGS = (
+    "nigger", "nigga", "faggot", "kike", "wetback", "beaner", "tranny",
+)
+
+_PROFANITY_WORDS = (
+    "fuck", "shit", "bitch", "cunt", "whore", "slut", "asshole",
+    "dickhead", "pussy", "cock", "penis", "vagina", "rape", "rapist",
+    "spic", "chink", "retard", "sex", "porn", "nazi",
+)
+
+# Common letter substitutions are folded back to letters before matching so
+# that words that are similar are caught by the same list.
+_LEET_MAP = str.maketrans({
+    "0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t",
+    "@": "a", "$": "s", "!": "i",
+})
+
+_WORD_RE = re.compile(r"[a-z]+")
+
+
+def contains_profanity(value: str) -> bool:
+    # Returns True if the text contains a blocked term. Checked against
+    # display names only, not passwords.
+    if not value:
+        return False
+    normalized = value.lower().translate(_LEET_MAP)
+    collapsed = re.sub(r"[^a-z]", "", normalized)
+    for slur in _SLUR_SUBSTRINGS:
+        if slur in collapsed:
+            return True
+    words = set(_WORD_RE.findall(normalized))
+    return any(w in words for w in _PROFANITY_WORDS)
 
 
 def require_member_of(db, house_id: int, target_user_id: int) -> None:

@@ -11,5 +11,12 @@ Thumbs.db
 # local logs
 *.log
 
-# uploaded avatar files. user-generated content, not source.
+# uploaded avatar files. user-generated content
 backend/uploads/
+
+# secrets and local state
+.env
+backend/.env
+*.db
+.venv/
+.DS_Store

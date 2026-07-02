@@ -14,7 +14,7 @@ from database import get_db
 from models import House, HouseMember, User
 from schemas import HouseCreate, HouseJoin, HouseOut, MemberOut
 from auth import get_current_user, require_house_member, require_admin
-from security import sanitize_text
+from security import sanitize_text, contains_profanity
 
 router = APIRouter(prefix="/api/houses", tags=["houses"])
 
@@ -27,8 +27,8 @@ def _make_code() -> str:
 
 
 def _member_out(u: User, role: str, joined: datetime, mem: HouseMember) -> MemberOut:
-    # Build a MemberOut response for the /members endpoint. Includes the
-    # profile fields stored on the user and the optional move-in / move-out
+    # Build a MemberOut response for the /members endpoint, Includes the
+    # profile fields stored on the user and the optional move-in/move-out
     # dates stored on the membership row, NULL values are converted to
     # empty strings so the Pydantic model validates cleanly
     now = datetime.utcnow()
@@ -53,8 +53,11 @@ def _member_out(u: User, role: str, joined: datetime, mem: HouseMember) -> Membe
 @router.post("", response_model=HouseOut)
 def create_house(data: HouseCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Create a new house, The user who creates the house is added as its admin
+    name = sanitize_text(data.name, 80)
+    if contains_profanity(name):
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Pick a different house name")
     house = House(
-        name=sanitize_text(data.name, 80),
+        name=name,
         address=sanitize_text(data.address, 200),
         invite_code=_make_code(),
     )
