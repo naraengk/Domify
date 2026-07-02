@@ -1,10 +1,11 @@
-// conflict log. stick to facts, helpful if the landlord ever asks for a record.
+// conflict log
+// helpful if the landlord ever asks for a record
 import { useEffect, useState } from "react";
 import { Scale, Plus, Trash2 } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardBody, EmptyState, Modal, Field, Input, Textarea,
+  Button, Card, CardBody, EmptyState, Modal, Field, Input, Textarea, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { timeAgo } from "../lib/format.js";
@@ -12,7 +13,7 @@ import { timeAgo } from "../lib/format.js";
 export default function Conflicts({ ctx }) {
   const { house } = ctx;
   const { push } = useToast();
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState(null);
   const [open, setOpen] = useState(false);
 
   async function load() {
@@ -33,7 +34,9 @@ export default function Conflicts({ ctx }) {
         }
       />
 
-      {items.length === 0 ? (
+      {items === null ? (
+        <LoadingCard />
+      ) : items.length === 0 ? (
         <Card><CardBody><EmptyState icon={Scale} title="Nothing logged" hint="Keep it that way." /></CardBody></Card>
       ) : (
         <div className="flex flex-col gap-3">

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 # Pydantic schemas used by the API, Each section below groups together the
-# request and response models for one feature area (auth, houses, expenses etc.
+# request and response models for one feature area (auth, houses, expenses etc
 
 from datetime import datetime
 from typing import Optional, List
@@ -10,14 +10,17 @@ from pydantic import BaseModel, EmailStr, Field
 
 # ---- auth ----
 class UserCreate(BaseModel):
-    name: str
+    name: str = Field(min_length=1, max_length=80)
     email: EmailStr
-    password: str = Field(min_length=6)
+    # Minimum eight characters aligns with modern password guidance and
+    # forces attackers doing offline cracking of the bcrypt hashes to
+    # search a much larger keyspace than the previous six-character floor
+    password: str = Field(min_length=8, max_length=128)
 
 
 class UserLogin(BaseModel):
     email: EmailStr
-    password: str
+    password: str = Field(max_length=128)
 
 
 class UserOut(BaseModel):
@@ -50,7 +53,7 @@ class ProfileOut(BaseModel):
 
 
 # Request body for partial profile updates. Every field is optional so the
-# client can send only the values that changed.
+# client can send only the values that changed
 class ProfileUpdate(BaseModel):
     bio: Optional[str] = None
     pronouns: Optional[str] = None
@@ -70,12 +73,12 @@ class TokenOut(BaseModel):
 
 # ---- house ----
 class HouseCreate(BaseModel):
-    name: str
-    address: str = ""
+    name: str = Field(min_length=1, max_length=80)
+    address: str = Field(default="", max_length=200)
 
 
 class HouseJoin(BaseModel):
-    invite_code: str
+    invite_code: str = Field(min_length=4, max_length=16)
 
 
 class HouseOut(BaseModel):
@@ -114,8 +117,8 @@ class MemberOut(BaseModel):
 
 # ---- chores ----
 class ChoreCreate(BaseModel):
-    name: str
-    description: str = ""
+    name: str = Field(min_length=1, max_length=120)
+    description: str = Field(default="", max_length=1000)
     frequency: str = "weekly"
     assigned_to: Optional[int] = None
     due_date: Optional[datetime] = None
@@ -198,9 +201,9 @@ class SettleIn(BaseModel):
 
 # ---- grocery ----
 class GroceryCreate(BaseModel):
-    name: str
-    quantity: str = "1"
-    category: str = "other"
+    name: str = Field(min_length=1, max_length=120)
+    quantity: str = Field(default="1", max_length=32)
+    category: str = Field(default="other", max_length=32)
 
 
 class GroceryOut(BaseModel):
@@ -222,6 +225,12 @@ class AnnouncementCreate(BaseModel):
     message: str = Field(default="", max_length=5000)
     urgency: str = "normal"
     is_pinned: bool = False
+
+
+class AnnouncementUpdate(BaseModel):
+    title: Optional[str] = Field(default=None, max_length=200)
+    message: Optional[str] = Field(default=None, max_length=5000)
+    urgency: Optional[str] = None
 
 
 class AnnouncementOut(BaseModel):
@@ -251,7 +260,7 @@ class QuietHoursOut(BaseModel):
 
 class QuietViolationCreate(BaseModel):
     offender: Optional[int] = None
-    description: str = ""
+    description: str = Field(default="", max_length=1000)
 
 
 class QuietViolationOut(BaseModel):
@@ -264,8 +273,8 @@ class QuietViolationOut(BaseModel):
 
 # ---- maintenance ----
 class MaintenanceCreate(BaseModel):
-    title: str
-    description: str = ""
+    title: str = Field(min_length=1, max_length=200)
+    description: str = Field(default="", max_length=5000)
     urgency: str = "normal"
     assigned_to: Optional[int] = None
 

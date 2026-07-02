@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Announcement, AnnouncementRead, User
-from schemas import AnnouncementCreate, AnnouncementOut
+from schemas import AnnouncementCreate, AnnouncementUpdate, AnnouncementOut
 from auth import get_current_user, require_house_member, require_admin
 from security import sanitize_text, normalize_urgency
 
@@ -102,6 +102,33 @@ def pin(house_id: int, ann_id: int, user: User = Depends(get_current_user), db: 
     a.is_pinned = not a.is_pinned
     db.commit()
     return {"ok": True, "is_pinned": a.is_pinned}
+
+
+@router.patch("/{ann_id}", response_model=AnnouncementOut)
+def edit_ann(house_id: int, ann_id: int, data: AnnouncementUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # Edit an existing announcement. Allowed for the original author or any
+    # admin of the house. Same sanitize pass as create so no HTML slips in
+    mem = require_house_member(house_id, user, db)
+    a = db.get(Announcement, ann_id)
+    if not a or a.house_id != house_id:
+        raise HTTPException(404, "Not found")
+    if a.created_by != user.id and mem.role != "admin":
+        raise HTTPException(403, "Only the author or an admin can edit")
+    if data.title is not None:
+        a.title = sanitize_text(data.title, 200)
+    if data.message is not None:
+        a.message = sanitize_text(data.message, 5000)
+    if data.urgency is not None:
+        a.urgency = normalize_urgency(data.urgency)
+    db.commit()
+    db.refresh(a)
+    author = db.get(User, a.created_by)
+    return AnnouncementOut(
+        id=a.id, title=a.title, message=a.message, urgency=a.urgency,
+        is_pinned=a.is_pinned, created_by=a.created_by,
+        created_by_name=author.name if author else "?",
+        created_at=a.created_at, is_read=True,
+    )
 
 
 @router.delete("/{ann_id}")

@@ -1,4 +1,4 @@
-// the login / register screen. one form, toggles between modes.
+// the login/register screen. one form, toggles between modes
 import { useState } from "react";
 import { api, setAuth } from "../lib/api.js";
 import { Button, Card, Field, Input } from "../components/ui.jsx";
@@ -19,7 +19,7 @@ export default function AuthPage({ onAuth }) {
     setError("");
     setBusy(true);
     try {
-      // same endpoints return a token + user. just hit the right one.
+      // same endpoints return a token and user
       const path = mode === "login" ? "/api/auth/login" : "/api/auth/register";
       const body = mode === "login" ? { email, password } : { name, email, password };
       const data = await api.post(path, body);
@@ -34,7 +34,7 @@ export default function AuthPage({ onAuth }) {
 
   return (
     <div className="min-h-full grid lg:grid-cols-2">
-      {/* left: brand + value props */}
+      {/* left: brand and value props */}
       <div className="hidden lg:flex flex-col justify-between p-12 bg-zinc-950 text-zinc-100 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(700px_360px_at_20%_0%,rgba(99,102,241,0.18),transparent_60%),radial-gradient(500px_280px_at_85%_100%,rgba(99,102,241,0.10),transparent_70%)] pointer-events-none" />
         <div className="relative flex items-center gap-2.5">
@@ -113,13 +113,13 @@ export default function AuthPage({ onAuth }) {
                   autoComplete="email"
                 />
               </Field>
-              <Field label="Password">
+              <Field label="Password" hint={mode === "register" ? "At least 8 characters." : null}>
                 <Input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
+                  minLength={mode === "register" ? 8 : 1}
                   autoComplete={mode === "login" ? "current-password" : "new-password"}
                 />
               </Field>

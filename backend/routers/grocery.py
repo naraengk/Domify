@@ -7,6 +7,7 @@ from database import get_db
 from models import GroceryItem, User
 from schemas import GroceryCreate, GroceryOut
 from auth import get_current_user, require_house_member
+from security import sanitize_text
 
 router = APIRouter(prefix="/api/houses/{house_id}/grocery", tags=["grocery"])
 
@@ -28,8 +29,11 @@ def list_items(house_id: int, user: User = Depends(get_current_user), db: Sessio
 def add_item(house_id: int, data: GroceryCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_house_member(house_id, user, db)
     it = GroceryItem(
-        house_id=house_id, name=data.name, quantity=data.quantity,
-        category=data.category, added_by=user.id,
+        house_id=house_id,
+        name=sanitize_text(data.name, 120),
+        quantity=sanitize_text(data.quantity, 32),
+        category=sanitize_text(data.category, 32) or "other",
+        added_by=user.id,
     )
     db.add(it)
     db.commit()

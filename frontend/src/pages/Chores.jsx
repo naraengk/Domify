@@ -1,10 +1,11 @@
-// chore list + leaderboard + recent activity. "mark done" auto-rotates the next assignee.
+// chore list, leaderboard, recent activity
+// "mark done" auto-rotates the next assignee
 import { useEffect, useState } from "react";
 import { Plus, Brush, Trash2, Trophy, Clock, RotateCw, ChevronRight } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardHeader, CardBody, EmptyState, Modal, Field, Input, Select, Pill, Textarea,
+  Button, Card, CardHeader, CardBody, EmptyState, Modal, Field, Input, Select, Pill, Textarea, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { timeAgo } from "../lib/format.js";
@@ -12,7 +13,7 @@ import { timeAgo } from "../lib/format.js";
 export default function Chores({ ctx }) {
   const { house, members } = ctx;
   const { push } = useToast();
-  const [chores, setChores] = useState([]);
+  const [chores, setChores] = useState(null);
   const [summary, setSummary] = useState([]);
   const [history, setHistory] = useState([]);
   const [open, setOpen] = useState(false);
@@ -43,7 +44,9 @@ export default function Chores({ ctx }) {
 
       <Card>
         <CardBody className="px-0 py-0">
-          {chores.length === 0 ? (
+          {chores === null ? (
+            <div className="p-5"><LoadingCard rows={3} /></div>
+          ) : chores.length === 0 ? (
             <EmptyState
               icon={Brush}
               title="No chores yet"

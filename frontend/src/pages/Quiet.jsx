@@ -3,12 +3,13 @@ import { Moon, Clock, AlertTriangle, ShieldAlert } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardHeader, CardBody, EmptyState, Field, Input, Select, Textarea,
+  Button, Card, CardHeader, CardBody, EmptyState, Field, Input, Select, Textarea, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { timeAgo } from "../lib/format.js";
 
-// quiet hours page. admins set the agreement, anyone can log a violation.
+// quiet hours page
+// admins set the agreement, anyone can log a violation
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -16,7 +17,7 @@ export default function Quiet({ ctx }) {
   const { house, members } = ctx;
   const { push } = useToast();
   const [hours, setHours] = useState({ start_time: "22:00", end_time: "08:00", days: "Mon,Tue,Wed,Thu,Sun" });
-  const [violations, setViolations] = useState([]);
+  const [violations, setViolations] = useState(null);
   const [vForm, setVForm] = useState({ offender: "", description: "" });
   const isAdmin = house.role === "admin";
 
@@ -133,7 +134,9 @@ export default function Quiet({ ctx }) {
       <Card>
         <CardHeader title="Violation history" icon={ShieldAlert} />
         <CardBody className="pt-0 px-0">
-          {violations.length === 0 ? (
+          {violations === null ? (
+            <div className="p-5"><LoadingCard rows={2} /></div>
+          ) : violations.length === 0 ? (
             <EmptyState icon={ShieldAlert} title="No violations logged" hint="Nice." />
           ) : (
             <ul className="divide-y divide-zinc-100">

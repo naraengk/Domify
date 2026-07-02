@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import {
   House, LayoutGrid, Brush, Receipt, BarChart3, ShoppingBasket,
   Megaphone, Moon, Wrench, Scale, Users, UserCircle, LogOut, Plus, KeyRound,
-  Copy, Menu, X, Bell, Search, ChevronDown, ChevronRight,
+  Copy, Menu, X, Search, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { logout, api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import { Button, Modal, Field, Input, EmptyState, Kbd } from "../components/ui.jsx";
 import { LogoMono } from "../components/Logo.jsx";
 import CommandPalette from "../components/CommandPalette.jsx";
+import NotificationsBell from "../components/NotificationsBell.jsx";
 
 import Dashboard from "./Dashboard.jsx";
 import Chores from "./Chores.jsx";
@@ -183,13 +184,13 @@ export default function AppShell({ user, onSignOut, onUserUpdate }) {
               <KeyRound size={14} /> Join
             </Button>
 
-            <button
-              className="relative grid h-8 w-8 place-items-center rounded-lg text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700"
-              aria-label="Notifications"
-            >
-              <Bell size={15} />
-              <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 rounded-full bg-accent-500 animate-pulse-dot" />
-            </button>
+            {activeHouse && (
+              <NotificationsBell
+                houseId={activeHouse.id}
+                userId={user.id}
+                onNavigate={setView}
+              />
+            )}
 
             <div className="hidden sm:flex items-center gap-2 pl-2 ml-1 border-l border-zinc-200">
               <div className="relative grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-accent-500 to-accent-700 text-[11px] font-semibold text-white shadow-innerTop">
@@ -241,7 +242,7 @@ export default function AppShell({ user, onSignOut, onUserUpdate }) {
                 {view === "expenses" && <Expenses ctx={ctx} user={user} />}
                 {view === "insights" && <Insights ctx={ctx} />}
                 {view === "grocery" && <Grocery ctx={ctx} members={members} />}
-                {view === "announcements" && <Announcements ctx={ctx} />}
+                {view === "announcements" && <Announcements ctx={ctx} user={user} />}
                 {view === "quiet" && <Quiet ctx={ctx} />}
                 {view === "maintenance" && <Maintenance ctx={ctx} />}
                 {view === "conflicts" && <Conflicts ctx={ctx} />}

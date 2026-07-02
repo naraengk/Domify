@@ -8,6 +8,7 @@ from database import get_db
 from models import Chore, ChoreCompletion, HouseMember, User
 from schemas import ChoreCreate, ChoreOut, ChoreCompletionOut
 from auth import get_current_user, require_house_member
+from security import sanitize_text, require_member_of
 
 router = APIRouter(prefix="/api/houses/{house_id}/chores", tags=["chores"])
 
@@ -55,22 +56,29 @@ def list_chores(house_id: int, user: User = Depends(get_current_user), db: Sessi
     return out
 
 
+_ALLOWED_FREQUENCY = {"daily", "weekly", "monthly"}
+
+
 @router.post("", response_model=ChoreOut)
 def create_chore(house_id: int, data: ChoreCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_house_member(house_id, user, db)
     # if no assignee, pick the first member for now
     assignee = data.assigned_to
-    if assignee is None:
+    if assignee is not None:
+        # Prevent naming a user in another house as the assignee.
+        require_member_of(db, house_id, assignee)
+    else:
         first = db.query(HouseMember).filter(HouseMember.house_id == house_id).order_by(HouseMember.id).first()
         assignee = first.user_id if first else None
 
-    due = data.due_date or _next_due(data.frequency, datetime.utcnow())
+    frequency = data.frequency if data.frequency in _ALLOWED_FREQUENCY else "weekly"
+    due = data.due_date or _next_due(frequency, datetime.utcnow())
 
     chore = Chore(
         house_id=house_id,
-        name=data.name,
-        description=data.description,
-        frequency=data.frequency,
+        name=sanitize_text(data.name, 120),
+        description=sanitize_text(data.description, 1000),
+        frequency=frequency,
         assigned_to=assignee,
         due_date=due,
         auto_rotate=data.auto_rotate,

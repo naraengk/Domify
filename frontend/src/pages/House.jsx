@@ -1,10 +1,11 @@
-// roommates page. lists everyone, lets admins boot people, lets anyone leave.
+// roommates page
+// lists everyone, lets admins boot people, lets anyone leave
 import { useEffect, useState } from "react";
 import { Users, Copy, ShieldCheck, UserMinus, LogOut } from "lucide-react";
 import { api } from "../lib/api.js";
 import { useToast } from "../lib/toast.jsx";
 import {
-  Button, Card, CardHeader, CardBody, Pill,
+  Button, Card, CardHeader, CardBody, Pill, LoadingCard,
 } from "../components/ui.jsx";
 import PageHeader from "../components/PageHeader.jsx";
 import { timeAgo } from "../lib/format.js";
@@ -12,7 +13,7 @@ import { timeAgo } from "../lib/format.js";
 export default function HouseMembers({ ctx, user, onLeave }) {
   const { house } = ctx;
   const { push } = useToast();
-  const [members, setMembers] = useState([]);
+  const [members, setMembers] = useState(null);
   const isAdmin = house.role === "admin";
 
   async function load() {
@@ -46,6 +47,9 @@ export default function HouseMembers({ ctx, user, onLeave }) {
           }
         />
         <CardBody className="pt-0 px-0">
+          {members === null ? (
+            <div className="px-5 pb-5"><LoadingCard rows={2} /></div>
+          ) : (
           <ul className="divide-y divide-zinc-100">
             {members.map((m) => (
               <li key={m.id} className="flex items-center justify-between gap-3 px-5 py-3">
@@ -87,6 +91,7 @@ export default function HouseMembers({ ctx, user, onLeave }) {
               </li>
             ))}
           </ul>
+          )}
         </CardBody>
       </Card>
 

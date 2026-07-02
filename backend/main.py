@@ -10,10 +10,11 @@ from fastapi.responses import FileResponse
 from config import settings
 from database import engine, Base
 from migrate import run_migrations
-from security import RateLimitMiddleware
+from security import RateLimitMiddleware, OriginCheckMiddleware
 from routers import (
     auth_router, houses, chores, expenses, grocery,
     announcements, quiet_hours, maintenance, conflicts, profile,
+    notifications,
 )
 
 Base.metadata.create_all(bind=engine)
@@ -22,6 +23,7 @@ run_migrations(engine)
 app = FastAPI(title="Domify", version="2.0.0")
 
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.cors_origin_list)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -40,6 +42,7 @@ app.include_router(announcements.router)
 app.include_router(quiet_hours.router)
 app.include_router(maintenance.router)
 app.include_router(conflicts.router)
+app.include_router(notifications.router)
 
 UPLOADS = os.path.join(os.path.dirname(__file__), "uploads")
 if os.path.isdir(UPLOADS):
