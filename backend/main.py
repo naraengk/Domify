@@ -10,7 +10,7 @@ from fastapi.responses import FileResponse
 from config import settings
 from database import engine, Base
 from migrate import run_migrations
-from security import RateLimitMiddleware
+from security import RateLimitMiddleware, OriginCheckMiddleware
 from routers import (
     auth_router, houses, chores, expenses, grocery,
     announcements, quiet_hours, maintenance, conflicts, profile,
@@ -23,6 +23,7 @@ run_migrations(engine)
 app = FastAPI(title="Domify", version="2.0.0")
 
 app.add_middleware(RateLimitMiddleware)
+app.add_middleware(OriginCheckMiddleware, allowed_origins=settings.cors_origin_list)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,

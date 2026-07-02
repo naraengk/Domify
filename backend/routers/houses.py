@@ -14,6 +14,7 @@ from database import get_db
 from models import House, HouseMember, User
 from schemas import HouseCreate, HouseJoin, HouseOut, MemberOut
 from auth import get_current_user, require_house_member, require_admin
+from security import sanitize_text
 
 router = APIRouter(prefix="/api/houses", tags=["houses"])
 
@@ -52,7 +53,11 @@ def _member_out(u: User, role: str, joined: datetime, mem: HouseMember) -> Membe
 @router.post("", response_model=HouseOut)
 def create_house(data: HouseCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Create a new house, The user who creates the house is added as its admin
-    house = House(name=data.name, address=data.address, invite_code=_make_code())
+    house = House(
+        name=sanitize_text(data.name, 80),
+        address=sanitize_text(data.address, 200),
+        invite_code=_make_code(),
+    )
     db.add(house)
     db.flush()
     mem = HouseMember(house_id=house.id, user_id=user.id, role="admin")

@@ -10,6 +10,7 @@ from auth import (
     hash_password, verify_password, create_access_token,
     get_current_user, set_auth_cookie, clear_auth_cookie,
 )
+from security import constant_time_password_verify
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -34,7 +35,11 @@ def register(data: UserCreate, response: Response, db: Session = Depends(get_db)
 def login(data: UserLogin, response: Response, db: Session = Depends(get_db)):
     from fastapi import HTTPException, status
     user = db.query(User).filter(User.email == data.email).first()
-    if not user or not verify_password(data.password, user.password_hash):
+    # Run bcrypt regardless of whether the user exists. This makes the
+    # unregistered-email path take the same time as a wrong-password path,
+    # blocking timing-based email enumeration.
+    hashed = user.password_hash if user else None
+    if not constant_time_password_verify(data.password, hashed):
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Bad email or password")
 
     token = create_access_token(user.id)

@@ -7,6 +7,7 @@ from database import get_db
 from models import QuietHours, QuietViolation, User
 from schemas import QuietHoursUpdate, QuietHoursOut, QuietViolationCreate, QuietViolationOut
 from auth import get_current_user, require_house_member, require_admin
+from security import sanitize_text, require_member_of
 
 router = APIRouter(prefix="/api/houses/{house_id}/quiet", tags=["quiet"])
 
@@ -57,9 +58,14 @@ def list_violations(house_id: int, user: User = Depends(get_current_user), db: S
 @router.post("/violations", response_model=QuietViolationOut)
 def add_violation(house_id: int, data: QuietViolationCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_house_member(house_id, user, db)
+    if data.offender is not None:
+        # Only names of current housemates may be recorded as the offender.
+        # Prevents cross-house user enumeration and lets you learn no name
+        # by trying random ids.
+        require_member_of(db, house_id, data.offender)
     v = QuietViolation(
         house_id=house_id, reported_by=user.id, offender=data.offender,
-        description=data.description,
+        description=sanitize_text(data.description, 1000),
     )
     db.add(v)
     db.commit()

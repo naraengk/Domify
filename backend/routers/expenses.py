@@ -11,6 +11,7 @@ from schemas import (
     ExpenseCreate, ExpenseOut, ExpenseSplitOut, BalanceOut, SettleIn,
 )
 from auth import get_current_user, require_house_member
+from security import sanitize_text, require_member_of
 
 router = APIRouter(prefix="/api/houses/{house_id}/expenses", tags=["expenses"])
 
@@ -46,16 +47,23 @@ def list_expenses(house_id: int, user: User = Depends(get_current_user), db: Ses
 def create_expense(house_id: int, data: ExpenseCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_house_member(house_id, user, db)
     members = db.query(HouseMember).filter(HouseMember.house_id == house_id).all()
-    member_ids = [m.user_id for m in members]
+    member_ids = {m.user_id for m in members}
 
     splits_in = data.splits
     # default split, equal across all current members
     if not splits_in:
         share = round(data.amount / len(member_ids), 2)
         splits_in = [type("S", (), {"user_id": uid, "amount_owed": share}) for uid in member_ids]
+    else:
+        # Reject splits that name someone outside this house.
+        for s in splits_in:
+            if s.user_id not in member_ids:
+                raise HTTPException(400, "Split references a non-member")
 
     exp = Expense(
-        house_id=house_id, title=data.title, category=data.category,
+        house_id=house_id,
+        title=sanitize_text(data.title, 200),
+        category=sanitize_text(data.category, 32) or "general",
         amount=data.amount, paid_by=user.id,
     )
     db.add(exp)
@@ -88,18 +96,20 @@ def balances(house_id: int, user: User = Depends(get_current_user), db: Session 
     # net per user = what they're owed - what they owe
     require_house_member(house_id, user, db)
     # raw SQL gets us totals per user efficiently
+    # Use NOT es.is_settled for portability across SQLite, stores bool as 0/1
+    # and Postgres, rejects boolean = integer comparison
     sql_owed = text("""
         SELECT es.user_id, COALESCE(SUM(es.amount_owed), 0) AS owed
         FROM expense_splits es
         JOIN expenses e ON e.id = es.expense_id
-        WHERE e.house_id = :h AND es.is_settled = 0 AND es.user_id != e.paid_by
+        WHERE e.house_id = :h AND NOT es.is_settled AND es.user_id != e.paid_by
         GROUP BY es.user_id
     """)
     sql_paid_for_others = text("""
         SELECT e.paid_by AS user_id, COALESCE(SUM(es.amount_owed), 0) AS lent
         FROM expenses e
         JOIN expense_splits es ON es.expense_id = e.id
-        WHERE e.house_id = :h AND es.is_settled = 0 AND es.user_id != e.paid_by
+        WHERE e.house_id = :h AND NOT es.is_settled AND es.user_id != e.paid_by
         GROUP BY e.paid_by
     """)
     owed_map = {r.user_id: float(r.owed) for r in db.execute(sql_owed, {"h": house_id})}
@@ -117,6 +127,9 @@ def balances(house_id: int, user: User = Depends(get_current_user), db: Session 
 def settle(house_id: int, data: SettleIn, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     # mark my unpaid splits to `to_user` as settled up to `amount`
     require_house_member(house_id, user, db)
+    # Prevent recording a payment to someone outside this house, which
+    # would leave a phantom Settlement row and corrupt the ledger.
+    require_member_of(db, house_id, data.to_user)
     remaining = data.amount
     # walk through unsettled splits where I owe `to_user`
     rows = (

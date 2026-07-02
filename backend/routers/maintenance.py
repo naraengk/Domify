@@ -7,6 +7,9 @@ from database import get_db
 from models import MaintenanceRequest, User
 from schemas import MaintenanceCreate, MaintenanceUpdate, MaintenanceOut
 from auth import get_current_user, require_house_member
+from security import sanitize_text, normalize_urgency, require_member_of
+
+_ALLOWED_STATUS = {"reported", "in_progress", "resolved"}
 
 router = APIRouter(prefix="/api/houses/{house_id}/maintenance", tags=["maintenance"])
 
@@ -36,9 +39,15 @@ def list_requests(house_id: int, user: User = Depends(get_current_user), db: Ses
 @router.post("", response_model=MaintenanceOut)
 def create_request(house_id: int, data: MaintenanceCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     require_house_member(house_id, user, db)
+    if data.assigned_to is not None:
+        require_member_of(db, house_id, data.assigned_to)
     m = MaintenanceRequest(
-        house_id=house_id, title=data.title, description=data.description,
-        urgency=data.urgency, assigned_to=data.assigned_to, created_by=user.id,
+        house_id=house_id,
+        title=sanitize_text(data.title, 200),
+        description=sanitize_text(data.description, 5000),
+        urgency=normalize_urgency(data.urgency),
+        assigned_to=data.assigned_to,
+        created_by=user.id,
     )
     db.add(m)
     db.commit()
@@ -54,8 +63,11 @@ def update_request(house_id: int, req_id: int, data: MaintenanceUpdate, user: Us
     if not m or m.house_id != house_id:
         raise HTTPException(404, "Not found")
     if data.status is not None:
+        if data.status not in _ALLOWED_STATUS:
+            raise HTTPException(400, "Invalid status")
         m.status = data.status
     if data.assigned_to is not None:
+        require_member_of(db, house_id, data.assigned_to)
         m.assigned_to = data.assigned_to
     db.commit()
     db.refresh(m)
